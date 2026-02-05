@@ -80,7 +80,7 @@ jobs:
             else
                 echo "No existing application running"
             fi
-
+  
 
       # 8️⃣ Run New Application
       - name: Run Application on EC2
