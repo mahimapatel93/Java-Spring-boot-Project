@@ -95,4 +95,37 @@ sudo chmod +x /usr/local/bin/docker-compose
 docker-compose --version
 
 
+###  CI/CD FLOW DIAGRAM (Easy to visualize)
+```
+Developer (Git Push)
+        |
+        v
+GitHub Repository (main branch)
+        |
+        v
+GitHub Actions Runner (Ubuntu)
+        |
+        |-- Checkout Code
+        |-- Setup Java 17
+        |-- Maven Build (JAR)
+        |
+        v
+Spring Boot JAR (datastore-0.0.7.jar)
+        |
+        v
+Secure Copy (SCP)
+        |
+        v
+AWS EC2 Server
+        |
+        |-- Stop Old App (if running)
+        |-- Start New App (nohup)
+        |
+        v
+Application Live on Port 8084 🚀
+        |
+        v
+MySQL (AWS RDS)
+```
+
 
