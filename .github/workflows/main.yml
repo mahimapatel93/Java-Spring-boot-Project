@@ -25,9 +25,9 @@ jobs:
       working-directory: backend
       run: mvn clean package -DskipTests=true
 
-    # 4️⃣ Prepare EC2 Directory & Remove Old JAR
+    # 4️⃣ Prepare EC2 Directory
     - name: Prepare EC2 App Directory
-      uses: appleboy/ssh-action@v1.0.3
+      uses: appleboy/ssh-action@v1.1.0
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ec2-user
@@ -35,9 +35,8 @@ jobs:
         script: |
           sudo mkdir -p /home/ec2-user/app
           sudo chown -R ec2-user:ec2-user /home/ec2-user/app
-          sudo rm -f /home/ec2-user/app/datastore-0.0.7.jar
 
-    # 5️⃣ Upload New JAR to EC2
+    # 5️⃣ Upload New JAR
     - name: Upload JAR to EC2
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -48,19 +47,19 @@ jobs:
         target: "/home/ec2-user/app/"
         overwrite: true
 
-    # 6️⃣ Stop Old Application (If Running)
+    # 6️⃣ Stop Old Application (SAFE WAY)
     - name: Stop Old Application
       uses: appleboy/ssh-action@v1.1.0
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ec2-user
         key: ${{ secrets.EC2_KEY }}
-        script_stop: false
         script: |
-          PID=$(pgrep -f datastore-0.0.7.jar || true)
+          PID=$(ps -ef | grep 'datastore-0.0.7.jar' | grep -v grep | awk '{print $2}')
           if [ -n "$PID" ]; then
             echo "Stopping old application PID=$PID"
-            kill -9 $PID
+            kill $PID
+            sleep 5
           else
             echo "No existing application running"
           fi
@@ -75,18 +74,14 @@ jobs:
         script: |
           sudo mkdir -p /var/log/app
           sudo chown ec2-user:ec2-user /var/log/app
-          sudo chmod 755 /var/log/app
 
           cd /home/ec2-user/app
 
-          nohup env \
-          MYSQL_HOST=MYSQL_HOST=database-1.cde682sy68e9.us-east-1.rds.amazonaws.com \
-          MYSQL_PORT=3306 \
-          MYSQL_USERNAME=mahima123 \
-          MYSQL_PASSWORD=mahima123 \
-          LOG_FILE_PATH=/var/log/app/datastore.log \
-          java -jar datastore-0.0.7.jar \
+          nohup java -jar datastore-0.0.7.jar \
           --server.port=8084 \
+          --spring.datasource.url=jdbc:mysql://database-1.cde682sy68e9.us-east-1.rds.amazonaws.com:3306/datastore \
+          --spring.datasource.username=mahima123 \
+          --spring.datasource.password=mahima123 \
           > /var/log/app/nohup.out 2>&1 &
 
           echo "🚀 Application started successfully"
