@@ -80,7 +80,7 @@ jobs:
           cd /home/ec2-user/app
 
           nohup env \
-          MYSQL_HOST=database-1.cde682sy68e9.us-east-1.rds.amazonaws.com \ 
+          MYSQL_HOST=MYSQL_HOST=database-1.cde682sy68e9.us-east-1.rds.amazonaws.com \
           MYSQL_PORT=3306 \
           MYSQL_USERNAME=mahima123 \
           MYSQL_PASSWORD=mahima123 \
