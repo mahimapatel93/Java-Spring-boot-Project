@@ -2,89 +2,75 @@ name: Full CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build-deploy:
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
 
     steps:
-    # 1️⃣ Checkout Code
-    - name: Checkout Repositor
-      uses: actions/checkout@v4
+      # 1️⃣ Checkout SCM
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    # 2️⃣ Setup Java 17
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      # 2️⃣ Setup Java 17
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+          cache: maven
 
-    # 3️⃣ Build Spring Boot JAR
-    - name: Build JAR
-      working-directory: backend
-      run: mvn clean package -DskipTests=true
+      # 3️⃣ Build JAR
+      - name: Build JAR
+        working-directory: backend
+        run: mvn clean package -DskipTests
 
-    # 4️⃣ Prepare EC2 Directory
-    - name: Prepare EC2 App Directory
-      uses: appleboy/ssh-action@v1.1.0
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ec2-user
-        key: ${{ secrets.EC2_KEY }}
-        script: |
-          sudo mkdir -p /home/ec2-user/app
-          sudo chown -R ec2-user:ec2-user /home/ec2-user/app
+      # 4️⃣ Prepare EC2 directories
+      - name: Prepare EC2
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            mkdir -p /home/ec2-user/app
+            mkdir -p /var/log/app
+            chmod -R 755 /home/ec2-user
+            chmod -R 755 /var/log/app
+            echo "EC2 ready"
 
-    # 5️⃣ Upload New JAR
-    - name: Upload JAR to EC2
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ec2-user
-        key: ${{ secrets.EC2_KEY }}
-        source: "backend/target/datastore-0.0.7.jar"
-        target: "/home/ec2-user/app/"
-        overwrite: true
+      # 5️⃣ Upload JAR
+      - name: Upload JAR to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_KEY }}
+          source: backend/target/datastore-0.0.7.jar
+          target: /home/ec2-user/app/
+          overwrite: true
 
-    # 6️⃣ Stop Old Application (SAFE WAY)
-    - name: Stop Old Application
-      uses: appleboy/ssh-action@v1.1.0
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ec2-user
-        key: ${{ secrets.EC2_KEY }}
-        script: |
-          PID=$(ps -ef | grep 'datastore-0.0.7.jar' | grep -v grep | awk '{print $2}')
-          if [ -n "$PID" ]; then
-            echo "Stopping old application PID=$PID"
-            kill $PID
-            sleep 5
-          else
-            echo "No existing application running"
-          fi
+      # 6️⃣ Start Application (NO KILL)
+      - name: Start Application
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            cd /home/ec2-user/app
 
-    # 7️⃣ Run New Application
-    - name: Run Application on EC2
-      uses: appleboy/ssh-action@v1.1.0
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ec2-user
-        key: ${{ secrets.EC2_KEY }}
-        script: |
-          sudo mkdir -p /var/log/app
-          sudo chown ec2-user:ec2-user /var/log/app
-
-          cd /home/ec2-user/app
-
-          nohup env \
+            nohup env \
             MYSQL_HOST=database-1.c43qqq2mgy2s.us-east-1.rds.amazonaws.com \
             MYSQL_PORT=3306 \
-            MYSQL_USERNAME=mahima123 \
+            MYSQL_USERNAME=admin \
             MYSQL_PASSWORD=mahima123 \
-            LOG_FILE_PATH=/var/log/app/datastore.log \
             java -jar datastore-0.0.7.jar \
             --server.port=8084 \
-            > /var/log/app/nohup.out 2>&1 &
+            > /var/log/app/datastore.log 2>&1 &
 
-          echo "🚀 Application started successfully.."
+            sleep 5
+            echo "Running process:"
+            ps -ef | grep datastore | grep -v grep || true
+            echo "🚀 Application started"
