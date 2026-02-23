@@ -87,4 +87,4 @@ jobs:
             --server.port=8084 \
             > /var/log/app/nohup.out 2>&1 &
 
-          echo "🚀 Application started successfully"
+          echo "🚀 Application started successfully.."
