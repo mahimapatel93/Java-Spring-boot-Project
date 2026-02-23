@@ -25,6 +25,8 @@ jobs:
       - name: Build JAR
         working-directory: backend
         run: mvn clean package -DskipTests
+      - name: Check built files
+        run: ls -l backend/target
 
       # 4️⃣ Prepare EC2 directories
       - name: Prepare EC2
@@ -47,7 +49,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
-          source: backend/target/datastore-0.0.7.jar
+          source: backend/target/*.jar
           target: /home/ec2-user/app/
           overwrite: true
 
