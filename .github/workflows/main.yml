@@ -22,9 +22,10 @@ jobs:
           cache: maven
 
       # 3️⃣ Build JAR
+     # 3️⃣ Build JAR
       - name: Build JAR
         working-directory: backend
-        run: mvn clean package -DskipTests
+        run: mvn clean install -Dmaven.test.skip=true
       - name: Check built files
         run: ls -l backend/target
 
